@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Services</title>
+</head>
+<body>
+
+<h1>All services</h1>
+    {% for service in services %}
+        <h3>Service: {{ service.name }}</h3>
+        <h3>Price: {{ service.price }}</h3>
+    {% endfor %}
+
+</body>
+</html>
