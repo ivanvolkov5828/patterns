@@ -1,6 +1,6 @@
 from routes import routes
 from waitress import serve
-
+from dependencies import get_request_params, decode_value, post_get_request_params
 
 def user_controller(request):
     request['users'] = {
@@ -14,11 +14,27 @@ front_controllers = [user_controller]
 
 
 def application(environ, start_response, routes: dict = routes, front_controllers: list = front_controllers):
-    path = environ['REQUEST_URI']
+    path = environ['PATH_INFO']
+
+    if not path.endswith('/'):
+        path = f'{path}/'
+
+    request = {}
+    method = environ['REQUEST_METHOD']
+    request['method'] = method
+
+    if method == 'POST':
+        data = post_get_request_params(environ)
+        request['data'] = decode_value(data)
+        print(f'POST-запрос: {decode_value(data)}')
+
+    if method == 'GET':
+        request_params = get_request_params(environ)
+        request['request_params'] = decode_value(request_params)
+        print(f'GET-запрос: {decode_value(request_params)}')
 
     if path in routes:
         view = routes[path]
-        request = {}
 
         for controller in front_controllers:
             controller(request)
