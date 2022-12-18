@@ -22,11 +22,10 @@ def get_request_params(environ):
 def post_parse_input_data(data: str):
     result = {}
     if data:
-        params = data.replace('\r\n','').replace(' ', '') \
-            .replace('{', '').replace('}', '').replace('"', '').split(',')
+        params = data.split('&')
 
         for item in params:
-            key, value = item.split(':')
+            key, value = item.split('=')
             result[key] = value
     return result
 
