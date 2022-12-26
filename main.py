@@ -1,6 +1,6 @@
-from routes import routes
+from views import routes
 from waitress import serve
-from dependencies import get_request_params, decode_value, post_get_request_params
+from functions.dependencies import get_request_params, decode_value, post_get_request_params
 
 def user_controller(request):
     request['users'] = {
