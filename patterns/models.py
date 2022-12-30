@@ -1,5 +1,6 @@
 from copy import deepcopy
 from quopri import decodestring
+from patterns.behavioral_patterns import Subject
 
 
 # PROTOTYPE
@@ -15,7 +16,8 @@ class PrototypeMixin:
 # USERS
 # ----------------------------------------------------------------------------------------------------------------------
 class User:
-    pass
+    def __init__(self, name):
+        self.name = name
 
 
 class Teacher(User):
@@ -23,7 +25,9 @@ class Teacher(User):
 
 
 class Student(User):
-    pass
+    def __init__(self, name):
+        self.courses = []
+        super().__init__(name)
 
 
 # FACTORY
@@ -34,8 +38,10 @@ class UserFactory:
     }
 
     @classmethod
-    def create(cls, type_):
-        return cls.types[type_]()
+    def create(cls, type_, name):
+        return cls.types[type_](name)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -56,16 +62,28 @@ class Category:
         if self.category:
             res += self.category.course_count()
         return res
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
 # COURSES
 # ----------------------------------------------------------------------------------------------------------------------
-class Course(PrototypeMixin):
+class Course(PrototypeMixin, Subject):
     def __init__(self, name, category):
         self.name = name
         self.category = category
         self.category.courses.append(self)
+        self.students = []
+        super().__init__()
+
+    def __getitem__(self, item):
+        return self.students[item]
+
+    def add_student(self, student: Student):
+        self.students.append(student)
+        student.courses.append(self)
+        self.notify()
 
 
 class InteractiveCourse(Course):
@@ -86,6 +104,8 @@ class CourseFactory:
     @classmethod
     def create(cls, type_, name, category):
         return cls.types[type_](name, category)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -108,18 +128,23 @@ class SingletonByName(type):
         else:
             cls.__instance[name] = super().__call__(*args, **kwargs)
             return cls.__instance[name]
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
 # Logger
 # ----------------------------------------------------------------------------------------------------------------------
 class Logger(metaclass=SingletonByName):
-    def __init__(self, name):
+    def __init__(self, name, writer):
         self.name = name
+        self.writer = writer
 
-    @staticmethod
-    def log(text):
-        print('log--->', text)
+    def log(self, text):
+        txt = f'log--->{text}'
+        self.writer.write(txt)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -133,8 +158,8 @@ class Engine:
         self.categories = []
 
     @staticmethod
-    def create_user(type_):
-        return UserFactory.create(type_)
+    def create_user(type_, name):
+        return UserFactory.create(type_, name)
 
     @staticmethod
     def create_category(name, category=None):
@@ -161,6 +186,10 @@ class Engine:
         for course in self.courses:
             if course.name == name:
                 return course
-            else:
-                raise Exception(f'Такого курса не существует')
+        return None
+
+    def get_student(self, name) -> Student:
+        for item in self.students:
+            if item.name == name:
+                return item
 # ----------------------------------------------------------------------------------------------------------------------
