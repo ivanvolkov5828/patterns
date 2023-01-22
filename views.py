@@ -5,17 +5,20 @@ from functions.render import render
 from data.services import services
 from data.users import users
 
-from patterns.models import Engine, Logger
+from patterns.models import Engine, Logger, MapperRegistry
 from patterns.app_route import AppRoute
 from patterns.debug import Debug
 from patterns.behavioral_patterns import EmailNotifier, SmsNotifier, \
-    TemplateView, ListVIew, CreateView, \
-    BaseSerializer, ConsoleWriter, FileWriter
+    ListVIew, CreateView, \
+    BaseSerializer, ConsoleWriter
+from patterns.architectural_system_pattern_unit_of_work import UnitOfWork
 
 site = Engine()
 logger = Logger('main', ConsoleWriter())
 email_notifier = EmailNotifier()
 sms_notifier = SmsNotifier()
+UnitOfWork.new_current()
+UnitOfWork.get_current().set_mapper_registry(MapperRegistry)
 
 routes = {}
 
@@ -319,11 +322,59 @@ class CopyCoursesView:
 # ----------------------------------------------------------------------------------------------------------------------
 # inheritance
 
-@AppRoute(routes=routes,  url='/student-list/')
+# @AppRoute(routes=routes,  url='/student-list/')
+# class StudentListView(ListVIew):
+#     queryset = site.students
+#     template_name = 'student_list.html'
+
+
+# @AppRoute(routes=routes, url='/create-student/')
+# class StudentCreateView(CreateView):
+#     template_name = 'create_student.html'
+#
+#     def create_obj(self, data: dict):
+#         name = data['name']
+#         name = site.decode_value(name)
+#         new_obj = site.create_user('student', name)
+#         site.students.append(new_obj)
+
+
+# @AppRoute(routes=routes, url='/add-student/')
+# class AddStudentByCourseCreateView(CreateView):
+#     template_name = 'add_student.html'
+#
+#     def get_context_data(self):
+#         context = super().get_context_data()
+#         context['courses'] = site.courses
+#         context['students'] = site.students
+#         return context
+#
+#     def create_obj(self, data: dict):
+#         course_name = data['course_name']
+#         course_name = site.decode_value(course_name)
+#         course = site.get_course(course_name)
+#         student_name = data['student_name']
+#         student_name = site.decode_value(student_name)
+#         student = site.get_student(student_name)
+#         course.add_student(student)
+
+
+@AppRoute(routes=routes, url='/api/')
+class CourseApi:
+    @Debug(name='CourseApi')
+    def __call__(self, request):
+        return '200 OK', BaseSerializer(site.courses).save()
+
+# ----------------------------------------------------------------------------------------------------------------------
+# STUDENT MAPPER
+
+@AppRoute(routes=routes, url='/student-list/')
 class StudentListView(ListVIew):
-    queryset = site.students
     template_name = 'student_list.html'
 
+    def get_queryset(self):
+        mapper = MapperRegistry.get_current_mapper('student')
+        return mapper.all()
 
 @AppRoute(routes=routes, url='/create-student/')
 class StudentCreateView(CreateView):
@@ -334,7 +385,9 @@ class StudentCreateView(CreateView):
         name = site.decode_value(name)
         new_obj = site.create_user('student', name)
         site.students.append(new_obj)
-
+        new_obj.mark_new()
+        UnitOfWork.get_current().set_mapper_registry(MapperRegistry)
+        UnitOfWork.get_current().commit()
 
 @AppRoute(routes=routes, url='/add-student/')
 class AddStudentByCourseCreateView(CreateView):
@@ -354,11 +407,3 @@ class AddStudentByCourseCreateView(CreateView):
         student_name = site.decode_value(student_name)
         student = site.get_student(student_name)
         course.add_student(student)
-
-
-@AppRoute(routes=routes, url='/api/')
-class CourseApi:
-    @Debug(name='CourseApi')
-    def __call__(self, request):
-        return '200 OK', BaseSerializer(site.courses).save()
-
